@@ -1,28 +1,68 @@
 const express = require("express");
 const path = require("path");
-const mongoose = require("mongoose");
+const fs = require("fs");
+const bodyParser = require("body-parser");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-mongoose.connect("mongodb://localhost:27017/chatdb", { useNewUrlParser: true });
-
-// Serve static files from the "public" directory
+app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, "public")));
-app.use(express.json());
 
-app.post("/api/chat", express.json(), (req, res) => {
-  const userMessage = req.body.message; // Get the message from the request body
+let faqData = [];
 
-  console.log("User message received:", userMessage); // Log the user message
+// Load FAQ data
+fs.readFile("data\\faq.json", "utf-8", (err, data) => {
+  if (err) {
+    console.error("Error reading or parsing faq.json:", err);
+    return;
+  }
 
-  // Simulate a response
-  const responseMessage = `You said: "${userMessage}"`;
-
-  // Send the response as JSON
-  res.json({ response: responseMessage });
+  try {
+    faqData = JSON.parse(data);
+    console.log("FAQ Data loaded:", faqData);
+  } catch (parseError) {
+    console.error("Error parsing JSON:", parseError);
+  }
 });
 
+app.post("/api/chat", (req, res) => {
+  if (!faqData) {
+    return res.json({ response: "I'm sorry, Can you rephrase your question?" });
+  }
+
+  const userMessage = req.body.message.toLowerCase();
+  const userKeywords = userMessage.split(/\s+/); // Split by spaces
+
+  let bestMatch = null;
+  let highestMatchCount = 0;
+
+  // Find the FAQ with the most keyword matches
+  for (const faq of faqData) {
+    const faqKeywords = faq.question.toLowerCase().split(/\s+/); // Split FAQ question into keywords
+    let matchCount = 0;
+
+    // Check how many keywords from the user question are in the FAQ question
+    for (const keyword of userKeywords) {
+      if (faqKeywords.includes(keyword)) {
+        matchCount++;
+      }
+    }
+
+    // Update the best match if the current FAQ has more matches
+    if (matchCount > highestMatchCount) {
+      highestMatchCount = matchCount;
+      bestMatch = faq;
+    }
+  }
+
+  // If a match is found, return the corresponding answer
+  const response = bestMatch
+    ? bestMatch.answer
+    : "I'm sorry, I don't have an answer for that yet.";
+
+  res.json({ response });
+});
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
