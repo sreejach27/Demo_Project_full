@@ -11,16 +11,18 @@ mongoose.connect("mongodb://localhost:27017/chatdb", { useNewUrlParser: true });
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());
 
-app.post("/chat", (req, res) => {
-  const userMessage = req.body.message;
-  let reply = "I'm a simple bot, and I don't understand that yet.";
+app.post("/api/chat", express.json(), (req, res) => {
+  const userMessage = req.body.message; // Get the message from the request body
 
-  if (userMessage.toLowerCase().includes("hello")) {
-    reply = "Hello! How can I help you today?";
-  }
+  console.log("User message received:", userMessage); // Log the user message
 
-  res.json({ reply });
+  // Simulate a response
+  const responseMessage = `You said: "${userMessage}"`;
+
+  // Send the response as JSON
+  res.json({ response: responseMessage });
 });
+
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
