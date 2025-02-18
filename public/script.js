@@ -1,39 +1,57 @@
-document.addEventListener("DOMContentLoaded", function () {
-  const sendButton = document.getElementById("sendButton");
-  const chatOutput = document.getElementById("chat-output");
+document.addEventListener("DOMContentLoaded", () => {
+  const userMessageInput = document.getElementById("userMessage");
+  const sendButton = document.getElementById("sendBtn");
+  const chatResponseDiv = document.getElementById("chatResponse");
 
-  sendButton.addEventListener("click", function () {
-    const userInput = document.getElementById("userInput").value.trim();
-    if (!userInput) return;
+  // Handle the send button click
+  sendButton.addEventListener("click", async () => {
+    const userMessage = userMessageInput.value.trim();
+    if (!userMessage) {
+      chatResponseDiv.textContent = "Please enter a question.";
+      return;
+    }
 
-    // Display the user's message
-    const userMessageElement = document.createElement("div");
-    userMessageElement.textContent = `You: ${userInput}`;
-    chatOutput.appendChild(userMessageElement);
-
-    // Send the user's message to the server
-    fetch("/api/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ message: userInput }),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        // Display the chatbot's response
-        const botMessageElement = document.createElement("div");
-        botMessageElement.textContent = `Chatbot: ${data.response}`;
-        chatOutput.appendChild(botMessageElement);
-      })
-      .catch((error) => {
-        console.error("Error:", error);
-        const errorMessageElement = document.createElement("div");
-        errorMessageElement.textContent = "Error: Could not connect to the server.";
-        chatOutput.appendChild(errorMessageElement);
+    try {
+      // Send a POST request to the server with the user's message
+      const response = await fetch("http://localhost:3000/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: userMessage }),
       });
 
+      if (!response.ok) {
+        throw new Error("Network response was not OK");
+      }
+
+      const data = await response.json();
+      chatResponseDiv.textContent = `Chatbot: ${data.response}`;
+
+      // Follow-up assistance prompt
+      setTimeout(() => {
+        const followUpPrompt = document.createElement("div");
+        followUpPrompt.innerHTML = `
+          <p>Do you need more assistance?</p>
+          <button id="yesBtn">Yes</button>
+          <button id="noBtn">No</button>
+        `;
+        chatResponseDiv.appendChild(followUpPrompt);
+
+        document.getElementById("yesBtn").addEventListener("click", () => {
+          window.location.href = "/form.html"; // Redirect to form page
+        });
+
+        document.getElementById("noBtn").addEventListener("click", () => {
+          followUpPrompt.remove();
+        });
+      }, 2000); // Show the prompt after 2 seconds
+    } catch (error) {
+      chatResponseDiv.textContent = "An error occurred. Please try again.";
+      console.error("Error:", error);
+    }
+
     // Clear the input field
-    document.getElementById("userInput").value = "";
+    userMessageInput.value = "";
   });
 });
